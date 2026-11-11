@@ -10,18 +10,17 @@ Independent AI-powered property evaluation microservice for RentSmart.
    npm install
    ```
 
-2. Copy `.env.example` to `.env` and set `PORT=5005`.
+2. Copy `.env.example` to `.env` and set `PORT=5007`.
 
 3. Start the development server:
 
    ```bash
-   npm run dev
+   node app.js
    ```
 
 4. Check health:
 
    ```text
-   GET http://localhost:5005/health
+   GET http://localhost:5007/health
    ```
-
-The initial health endpoint checks that the Express service is running. MongoDB and Gemini integration will be added in later steps.
+ 
