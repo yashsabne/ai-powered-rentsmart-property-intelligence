@@ -36,24 +36,6 @@ const propertySchema = z.object({
   listingPhotos: z.array(z.string().url()).default([])
 });
 
-const validateProperty = (req, res) => {
-  const validation = propertySchema.safeParse(req.body);
-
-  if (!validation.success) {
-    return res.status(422).json({
-      success: false,
-      code: "INVALID_PROPERTY_DATA",
-      message: "Insufficient or invalid property information for AI evaluation.",
-      errors: validation.error.issues.map(issue => ({
-        field: issue.path.join("."),
-        message: issue.message
-      }))
-    });
-  }
-
-  return validation.data;
-};
-
 const uniqueItems = (...arrays) => {
   return [...new Set(arrays.flat().filter(Boolean))];
 };
@@ -66,9 +48,15 @@ export const evaluateProperty = async (req, res) => {
   try {
     const validation = propertySchema.safeParse(req.body);
 
-    const property = validateProperty(req, res);
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid property data",
+        errors: validation.error.flatten()
+      });
+    }
 
-    if (!property) return;
+    const property = validation.data;
 
     const analysis = await analyzeProperty(property);
 
@@ -165,10 +153,17 @@ export const evaluateProperty = async (req, res) => {
 
 export const evaluateCompleteProperty = async (req, res) => {
   try {
-    const property = validateProperty(req, res);
+    const validation = propertySchema.safeParse(req.body);
 
-    if (!property) return;
- 
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid property data",
+        errors: validation.error.flatten()
+      });
+    }
+
+    const property = validation.data;
 
     // 1. Run text analysis.
     const textAnalysis = await analyzeProperty(property);
