@@ -155,6 +155,8 @@ export const evaluateCompleteProperty = async (req, res) => {
   try {
     const validation = propertySchema.safeParse(req.body);
 
+    console.log(validation,'for invalid prop')
+
     if (!validation.success) {
       return res.status(400).json({
         success: false,
