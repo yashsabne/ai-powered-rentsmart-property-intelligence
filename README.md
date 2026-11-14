@@ -8,7 +8,7 @@ An AI-powered property listing evaluation microservice used by RentSmart. It eva
 
 ### Service architecture
 
-\`\`\`mermaid
+```mermaid
 flowchart LR
     RS["RentSmart<br/>Property Service / Backend"] -->|"HTTP + x-service-key"| API["Express API<br/>Property Intelligence"]
     API --> AUTH["Service-key Middleware"]
@@ -22,11 +22,11 @@ flowchart LR
     COMB --> DB[("MongoDB<br/>Evaluation Collection")]
     DB --> RESP["Structured API Response"]
     COMB --> RESP
-\`\`\`
+```
 
 ### Combined evaluation flow
 
-\`\`\`mermaid
+```mermaid
 flowchart TD
     A["POST /api/evaluations/complete"] --> B["Validate request with Zod"]
     B --> C["Analyze listing text and structured fields"]
@@ -44,11 +44,11 @@ flowchart TD
     L --> N
     N --> O["Persist one Evaluation document"]
     O --> P["Return scores and evaluation details"]
-\`\`\`
+```
 
 ### Evaluation routes
 
-\`\`\`mermaid
+```mermaid
 flowchart TB
     CLIENT["RentSmart Backend"] --> AUTH["x-service-key check"]
     AUTH --> R{"API route"}
@@ -60,7 +60,7 @@ flowchart TB
     I --> IMAGE["Image analysis + image score<br/>Return result; no persistence"]
     C --> BOTH["Text + image analysis<br/>Combined score + persist evaluation"]
     H --> HISTORY["Read stored evaluations<br/>Newest first"]
-\`\`\`
+```
 
 ## How evaluation works
 
@@ -76,12 +76,12 @@ The property analysis service sends the listing's structured and descriptive inf
 
 The model is expected to return scores from 0–100, flags, suggestions and a summary. The response is parsed and validated with Zod. The text analysis makes up to **two attempts** when output is empty, invalid or fails validation.
 
-\`\`\`text
+```text
 Text score =
   completeness × 0.40
 + consistency × 0.35
 + descriptionQuality × 0.25
-\`\`\`
+```
 
 ### 2. Image analysis
 
@@ -96,12 +96,12 @@ For each photo, the model returns:
 
 It also evaluates visual consistency across the selected photos and returns flags, suggestions and a summary. The backend calculates the photo-quality and property-relevance averages; visual consistency comes from the model's cross-photo assessment.
 
-\`\`\`text
+```text
 Image score =
   photo quality × 0.40
 + property relevance × 0.35
 + visual consistency × 0.25
-\`\`\`
+```
 
 Image review severity is based on relevance and visual consistency—not clarity alone:
 
@@ -111,15 +111,15 @@ Image review severity is based on relevance and visual consistency—not clarity
 | Property relevance below 45, or visual consistency below 35 | MODERATE |
 | Otherwise | NONE |
 
-A non-\`NONE\` severity sets \`reviewRecommendation\` to \`true\`. These are review signals, not fraud or ownership findings.
+A non-`NONE` severity sets `reviewRecommendation` to `true`. These are review signals, not fraud or ownership findings.
 
 ### 3. Overall score
 
 When image scores are available:
 
-\`\`\`text
+```text
 Overall score = text score × 0.80 + image score × 0.20
-\`\`\`
+```
 
 When no photos are provided, the overall score is the text score and the weights are 100% text / 0% image.
 
@@ -132,60 +132,60 @@ When no photos are provided, the overall score is the text score and the weights
 
 ## API
 
-Base path: \`/api/evaluations\`
+Base path: `/api/evaluations`
 
 All evaluation routes require the following header:
 
-\`\`\`http
+```http
 x-service-key: <SERVICE_API_KEY>
-\`\`\`
+```
 
-The service responds with **503** when \`SERVICE_API_KEY\` is not configured and **401** when the supplied key does not match.
+The service responds with **503** when `SERVICE_API_KEY` is not configured and **401** when the supplied key does not match.
 
 ### 1. Text-only evaluation
 
-\`\`\`http
+```http
 POST /api/evaluations
 Content-Type: application/json
 x-service-key: <SERVICE_API_KEY>
-\`\`\`
+```
 
-Evaluates listing text and structured fields, calculates the text score, and stores an evaluation document. The image status is recorded as \`NOT_PROVIDED\`.
+Evaluates listing text and structured fields, calculates the text score, and stores an evaluation document. The image status is recorded as `NOT_PROVIDED`.
 
 ### 2. Image-only evaluation
 
-\`\`\`http
+```http
 POST /api/evaluations/images
 Content-Type: application/json
 x-service-key: <SERVICE_API_KEY>
-\`\`\`
+```
 
-Analyzes listing photos and returns image scores and review signals. This endpoint does **not** create an \`Evaluation\` document.
+Analyzes listing photos and returns image scores and review signals. This endpoint does **not** create an `Evaluation` document.
 
 ### 3. Combined text and image evaluation
 
-\`\`\`http
+```http
 POST /api/evaluations/complete
 Content-Type: application/json
 x-service-key: <SERVICE_API_KEY>
-\`\`\`
+```
 
-Runs both analyses, calculates the overall listing score, merges flags and suggestions, and persists the complete evaluation in one MongoDB document. If \`listingPhotos\` is empty or omitted, it falls back to text-only scoring.
+Runs both analyses, calculates the overall listing score, merges flags and suggestions, and persists the complete evaluation in one MongoDB document. If `listingPhotos` is empty or omitted, it falls back to text-only scoring.
 
 ### 4. Evaluation history
 
-\`\`\`http
+```http
 GET /api/evaluations/:propertyId/history
 x-service-key: <SERVICE_API_KEY>
-\`\`\`
+```
 
-Returns stored evaluations for the property, ordered by \`evaluatedAt\` descending. Returns **404** when no history is found.
+Returns stored evaluations for the property, ordered by `evaluatedAt` descending. Returns **404** when no history is found.
 
 ### Request body
 
 The text and combined endpoints accept the following shape. The image-only endpoint uses a similar subset and requires at least one photo.
 
-\`\`\`json
+```json
 {
   "propertyId": "property-id",
   "title": "2 BHK apartment near the city centre",
@@ -210,40 +210,40 @@ The text and combined endpoints accept the following shape. The image-only endpo
     "https://example.com/property-photo-2.jpg"
   ]
 }
-\`\`\`
+```
 
 **Validation notes**
-- \`propertyId\` must be a non-empty string.
-- \`title\` must contain at least 3 characters; \`description\` at least 10.
-- \`price\` must be a positive number.
-- \`amenities\` defaults to an empty array.
-- \`listingPhotos\` defaults to an empty array on text/combined evaluation; each supplied value must be a valid URL.
+- `propertyId` must be a non-empty string.
+- `title` must contain at least 3 characters; `description` at least 10.
+- `price` must be a positive number.
+- `amenities` defaults to an empty array.
+- `listingPhotos` defaults to an empty array on text/combined evaluation; each supplied value must be a valid URL.
 - Image analysis only accepts HTTPS photo URLs and analyzes at most the first three.
 
 ### Response shape
 
-The text-only and combined endpoints return \`201 Created\` with an \`evaluationId\`, \`propertyId\`, an \`evaluation\` object, and a disclaimer. The combined response includes \`scoringDetails\`, \`textEvaluation\`, and \`imageEvaluation\`. The image-only endpoint returns \`200 OK\` with an \`imageEvaluation\` object and does not return an evaluation record ID.
+The text-only and combined endpoints return `201 Created` with an `evaluationId`, `propertyId`, an `evaluation` object, and a disclaimer. The combined response includes `scoringDetails`, `textEvaluation`, and `imageEvaluation`. The image-only endpoint returns `200 OK` with an `imageEvaluation` object and does not return an evaluation record ID.
 
-Validation errors return \`400\`; unexpected evaluation failures return \`500\`. In development mode, the evaluation controller may include the underlying error message.
+Validation errors return `400`; unexpected evaluation failures return `500`. In development mode, the evaluation controller may include the underlying error message.
 
 ## Data model
 
-Each persisted evaluation is stored in MongoDB's \`evaluations\` collection through the Mongoose \`Evaluation\` model.
+Each persisted evaluation is stored in MongoDB's `evaluations` collection through the Mongoose `Evaluation` model.
 
 The document includes:
-- \`propertyId\` and overall \`listingQualityScore\` / \`rating\`
+- `propertyId` and overall `listingQualityScore` / `rating`
 - Text breakdown, flags, suggestions and summary
-- Structured \`textEvaluation\` and \`imageEvaluation\` objects
-- \`scoringDetails\`, including the component scores and weights
-- Configured model identifiers and \`modelVersion\`
-- \`propertySnapshot\` captured at evaluation time
-- \`evaluatedAt\` and Mongoose timestamps
+- Structured `textEvaluation` and `imageEvaluation` objects
+- `scoringDetails`, including the component scores and weights
+- Configured model identifiers and `modelVersion`
+- `propertySnapshot` captured at evaluation time
+- `evaluatedAt` and Mongoose timestamps
 
-An index supports lookup by \`propertyId\`; a compound index on \`propertyId\` and \`evaluatedAt\` supports history retrieval in reverse chronological order.
+An index supports lookup by `propertyId`; a compound index on `propertyId` and `evaluatedAt` supports history retrieval in reverse chronological order.
 
 ## Project structure
 
-\`\`\`text
+```text
 .
 ├── app.js
 ├── package.json
@@ -267,7 +267,7 @@ An index supports lookup by \`propertyId\`; a compound index on \`propertyId\` a
         ├── scoring.service.js          # Text score
         ├── imageScoring.service.js     # Image scores + review severity
         └── combinedScoring.service.js  # Overall score and rating
-\`\`\`
+```
 
 ## Local setup
 
@@ -279,36 +279,36 @@ An index supports lookup by \`propertyId\`; a compound index on \`propertyId\` a
 
 ### Install and run
 
-\`\`\`bash
+```bash
 git clone https://github.com/yashsabne/ai-powered-rentsmart-property-intelligence.git
 cd ai-powered-rentsmart-property-intelligence
 npm install
 cp .env.example .env
 npm run dev
-\`\`\`
+```
 
-On Windows PowerShell, use \`Copy-Item .env.example .env\` instead of \`cp\`.
+On Windows PowerShell, use `Copy-Item .env.example .env` instead of `cp`.
 
-Set the environment variables in \`.env\`:
+Set the environment variables in `.env`:
 
 | Variable | Purpose |
 |---|---|
-| \`PORT\` | HTTP port; defaults to \`5007\` |
-| \`MONGO_URI\` | MongoDB connection URI |
-| \`GROQ_API_KEY\` | Groq API key |
-| \`GROQ_MODEL\` | Text analysis model; code default: \`openai/gpt-oss-20b\` |
-| \`GROQ_VISION_MODEL\` | Image analysis model; code default: \`qwen/qwen3.8-27b\` |
-| \`SERVICE_API_KEY\` | Shared key expected in the \`x-service-key\` header |
-| \`NODE_ENV\` | Controls whether evaluation errors include details in controller responses |
+| `PORT` | HTTP port; defaults to `5007` |
+| `MONGO_URI` | MongoDB connection URI |
+| `GROQ_API_KEY` | Groq API key |
+| `GROQ_MODEL` | Text analysis model; code default: `openai/gpt-oss-20b` |
+| `GROQ_VISION_MODEL` | Image analysis model; code default: `qwen/qwen3.8-27b` |
+| `SERVICE_API_KEY` | Shared key expected in the `x-service-key` header |
+| `NODE_ENV` | Controls whether evaluation errors include details in controller responses |
 
 The app connects to MongoDB before it starts listening. If the database connection fails, startup exits with an error.
 
 ### Health checks
 
-\`\`\`http
+```http
 GET /
 GET /health
-\`\`\`
+```
 
 These root and health routes are public and do not use the service-key middleware.
 
